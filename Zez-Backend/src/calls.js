@@ -3,10 +3,7 @@ const { pool } = require('./db');
 const { encryptJson, decryptJson } = require('./crypto');
 
 function asString(value, fallback = '') {
-  if (value === undefined || value === null) {
-    return fallback;
-  }
-
+  if (value === undefined || value === null) return fallback;
   return String(value);
 }
 
@@ -20,47 +17,25 @@ function normalizeCall(input) {
   const phoneNumber = asString(
     input.phoneNumber ?? input.phone_number ?? input.number
   );
-
   const timestamp = asString(
-    input.timestamp ??
-    input.dateTime ??
-    input.date ??
-    input.call_timestamp
+    input.timestamp ?? input.dateTime ?? input.date ?? input.call_timestamp
   );
-
-  const type = asString(
-    input.type ?? input.rawType ?? input.call_type,
-    'UNKNOWN'
-  );
-
+  const type = asString(input.type ?? input.rawType ?? input.call_type, 'UNKNOWN');
   const durationNumber = Number(input.duration ?? 0);
   const duration = Number.isFinite(durationNumber)
     ? Math.max(0, Math.trunc(durationNumber))
     : 0;
-
-  const name = asString(
-    input.name ?? input.contactName ?? input.contact_name
-  );
-
+  const name = asString(input.name ?? input.contactName ?? input.contact_name);
   const sourceId = input.id ?? input.callId ?? input.call_id;
 
   const fingerprint = JSON.stringify([
-    phoneNumber,
-    timestamp,
-    type,
-    duration,
-    name
+    phoneNumber, timestamp, type, duration, name
   ]);
 
   const externalId =
-    sourceId !== undefined &&
-    sourceId !== null &&
-    String(sourceId).length
+    sourceId !== undefined && sourceId !== null && String(sourceId).length
       ? `android:${String(sourceId)}`
-      : `fallback:${crypto
-          .createHash('sha256')
-          .update(fingerprint)
-          .digest('hex')}`;
+      : `fallback:${crypto.createHash('sha256').update(fingerprint).digest('hex')}`;
 
   return {
     externalId,
@@ -98,30 +73,18 @@ async function insertBatch(records) {
       });
 
       const result = await client.query(
-        `INSERT INTO calls (
-           external_id_hash,
-           call_timestamp,
-           encrypted_payload
-         )
+        `INSERT INTO calls (external_id_hash, call_timestamp, encrypted_payload)
          VALUES ($1, $2, $3)
          ON CONFLICT (external_id_hash) DO NOTHING
          RETURNING id`,
-        [
-          externalIdHash,
-          record.timestamp,
-          encryptedPayload
-        ]
+        [externalIdHash, record.timestamp, encryptedPayload]
       );
 
-      if (result.rowCount === 1) {
-        inserted++;
-      } else {
-        duplicates++;
-      }
+      if (result.rowCount === 1) inserted++;
+      else duplicates++;
     }
 
     await client.query('COMMIT');
-
     return { inserted, duplicates };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -140,7 +103,7 @@ async function getCalls({ limit, offset }) {
     [limit, offset]
   );
 
-  return result.rows.map(row => {
+  return result.rows.map((row) => {
     const payload = decryptJson(row.encrypted_payload);
 
     return {
@@ -159,16 +122,8 @@ async function getCalls({ limit, offset }) {
 }
 
 async function countCalls() {
-  const result = await pool.query(
-    'SELECT COUNT(*) AS count FROM calls'
-  );
-
+  const result = await pool.query('SELECT COUNT(*) AS count FROM calls');
   return Number(result.rows[0].count);
 }
 
-module.exports = {
-  normalizeCall,
-  insertBatch,
-  getCalls,
-  countCalls
-};
+module.exports = { normalizeCall, insertBatch, getCalls, countCalls };

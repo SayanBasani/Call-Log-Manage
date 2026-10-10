@@ -1,61 +1,52 @@
-const fs = require('node:fs');
-const path = require('node:path');
-const initSqlJs = require('sql.js');
+const { Pool } = require('pg');
 
-const configuredPath = process.env.DATABASE_PATH || './data/zez.sqlite';
-const databasePath = path.resolve(process.cwd(), configuredPath);
+const connectionString = process.env.DATABASE_URL;
 
-fs.mkdirSync(path.dirname(databasePath), { recursive: true });
+if (!connectionString) {
+  throw new Error('DATABASE_URL is not configured.');
+}
 
-let db;
+// Use the connection string supplied by your PostgreSQL provider (for Neon,
+// use its pooled connection string and keep SSL enabled in that URL).
+const pool = new Pool({
+  connectionString,
+  max: 5,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000
+});
+
+pool.on('error', (error) => {
+  console.error('Unexpected PostgreSQL pool error:', error);
+});
 
 async function initializeDatabase() {
-  const SQL = await initSqlJs();
+  // Fail early if PostgreSQL is unreachable or credentials are incorrect.
+  await pool.query('SELECT 1');
 
-  if (fs.existsSync(databasePath)) {
-    const fileBytes = fs.readFileSync(databasePath);
-    db = new SQL.Database(fileBytes);
-  } else {
-    db = new SQL.Database();
-  }
-
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS calls (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      external_id TEXT NOT NULL UNIQUE,
-      phone_number TEXT NOT NULL DEFAULT '',
-      contact_name TEXT NOT NULL DEFAULT '',
-      call_type TEXT NOT NULL DEFAULT 'UNKNOWN',
+      id BIGSERIAL PRIMARY KEY,
+      external_id_hash CHAR(64) NOT NULL UNIQUE,
       call_timestamp TEXT NOT NULL DEFAULT '',
-      duration INTEGER NOT NULL DEFAULT 0,
-      raw_json TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-      updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      encrypted_payload TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    CREATE INDEX IF NOT EXISTS idx_calls_timestamp
-      ON calls(call_timestamp DESC);
   `);
 
-  persistDatabase();
-  return db;
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_calls_timestamp
+    ON calls (call_timestamp DESC, id DESC);
+  `);
+
+  console.log('PostgreSQL database initialized.');
 }
 
-function getDatabase() {
-  if (!db) {
-    throw new Error('Database has not been initialized.');
-  }
-  return db;
-}
-
-function persistDatabase() {
-  if (!db) return;
-  const bytes = db.export();
-  fs.writeFileSync(databasePath, Buffer.from(bytes));
+async function closeDatabase() {
+  await pool.end();
 }
 
 module.exports = {
+  pool,
   initializeDatabase,
-  getDatabase,
-  persistDatabase,
-  databasePath
+  closeDatabase
 };

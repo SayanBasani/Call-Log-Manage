@@ -9,13 +9,8 @@ function getKey() {
 
   const decoded = Buffer.from(key, 'base64');
 
-  if (
-    decoded.length !== 32 ||
-    decoded.toString('base64') !== key
-  ) {
-    throw new Error(
-      'ENCRYPTION_KEY must be a valid base64-encoded 32-byte key.'
-    );
+  if (decoded.length !== 32 || decoded.toString('base64') !== key) {
+    throw new Error('ENCRYPTION_KEY must be a valid base64-encoded 32-byte key.');
   }
 
   return decoded;
@@ -23,11 +18,7 @@ function getKey() {
 
 function encryptJson(value) {
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(
-    'aes-256-gcm',
-    getKey(),
-    iv
-  );
+  const cipher = crypto.createCipheriv('aes-256-gcm', getKey(), iv);
 
   const plaintext = Buffer.from(JSON.stringify(value), 'utf8');
   const ciphertext = Buffer.concat([
@@ -35,12 +26,10 @@ function encryptJson(value) {
     cipher.final()
   ]);
 
-  const authTag = cipher.getAuthTag();
-
   return JSON.stringify({
     version: 1,
     iv: iv.toString('base64'),
-    tag: authTag.toString('base64'),
+    tag: cipher.getAuthTag().toString('base64'),
     data: ciphertext.toString('base64')
   });
 }
@@ -61,20 +50,11 @@ function decryptJson(encrypted) {
   const tag = Buffer.from(envelope.tag, 'base64');
   const ciphertext = Buffer.from(envelope.data, 'base64');
 
-  if (
-    iv.length !== 12 ||
-    tag.length !== 16 ||
-    ciphertext.length === 0
-  ) {
+  if (iv.length !== 12 || tag.length !== 16) {
     throw new Error('Invalid encrypted record.');
   }
 
-  const decipher = crypto.createDecipheriv(
-    'aes-256-gcm',
-    getKey(),
-    iv
-  );
-
+  const decipher = crypto.createDecipheriv('aes-256-gcm', getKey(), iv);
   decipher.setAuthTag(tag);
 
   const plaintext = Buffer.concat([
