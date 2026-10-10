@@ -1,8 +1,12 @@
 const crypto = require('node:crypto');
-const { getDatabase, persistDatabase } = require('./db');
+const { pool } = require('./db');
+const { encryptJson, decryptJson } = require('./crypto');
 
 function asString(value, fallback = '') {
-  if (value === undefined || value === null) return fallback;
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+
   return String(value);
 }
 
@@ -13,18 +17,50 @@ function normalizeCall(input) {
     throw error;
   }
 
-  const phoneNumber = asString(input.phoneNumber ?? input.phone_number ?? input.number);
-  const timestamp = asString(input.timestamp ?? input.dateTime ?? input.date ?? input.call_timestamp);
-  const type = asString(input.type ?? input.rawType ?? input.call_type, 'UNKNOWN');
+  const phoneNumber = asString(
+    input.phoneNumber ?? input.phone_number ?? input.number
+  );
+
+  const timestamp = asString(
+    input.timestamp ??
+    input.dateTime ??
+    input.date ??
+    input.call_timestamp
+  );
+
+  const type = asString(
+    input.type ?? input.rawType ?? input.call_type,
+    'UNKNOWN'
+  );
+
   const durationNumber = Number(input.duration ?? 0);
-  const duration = Number.isFinite(durationNumber) ? Math.max(0, Math.trunc(durationNumber)) : 0;
-  const name = asString(input.name ?? input.contactName ?? input.contact_name);
+  const duration = Number.isFinite(durationNumber)
+    ? Math.max(0, Math.trunc(durationNumber))
+    : 0;
+
+  const name = asString(
+    input.name ?? input.contactName ?? input.contact_name
+  );
 
   const sourceId = input.id ?? input.callId ?? input.call_id;
-  const fingerprintSource = JSON.stringify([phoneNumber, timestamp, type, duration, name]);
-  const externalId = sourceId !== undefined && sourceId !== null && String(sourceId).length
-    ? `android:${String(sourceId)}`
-    : `fallback:${crypto.createHash('sha256').update(fingerprintSource).digest('hex')}`;
+
+  const fingerprint = JSON.stringify([
+    phoneNumber,
+    timestamp,
+    type,
+    duration,
+    name
+  ]);
+
+  const externalId =
+    sourceId !== undefined &&
+    sourceId !== null &&
+    String(sourceId).length
+      ? `android:${String(sourceId)}`
+      : `fallback:${crypto
+          .createHash('sha256')
+          .update(fingerprint)
+          .digest('hex')}`;
 
   return {
     externalId,
@@ -37,83 +73,102 @@ function normalizeCall(input) {
   };
 }
 
-function insertBatch(records) {
-  const db = getDatabase();
+async function insertBatch(records) {
+  const client = await pool.connect();
   let inserted = 0;
   let duplicates = 0;
 
-  db.run('BEGIN TRANSACTION');
   try {
-    const stmt = db.prepare(`
-      INSERT OR IGNORE INTO calls
-        (external_id, phone_number, contact_name, call_type,
-         call_timestamp, duration, raw_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+    await client.query('BEGIN');
 
-    try {
-      for (const record of records) {
-        stmt.run([
-          record.externalId,
-          record.phoneNumber,
-          record.name,
-          record.type,
+    for (const record of records) {
+      const externalIdHash = crypto
+        .createHash('sha256')
+        .update(record.externalId)
+        .digest('hex');
+
+      const encryptedPayload = encryptJson({
+        externalId: record.externalId,
+        phoneNumber: record.phoneNumber,
+        name: record.name,
+        type: record.type,
+        timestamp: record.timestamp,
+        duration: record.duration,
+        raw: JSON.parse(record.rawJson)
+      });
+
+      const result = await client.query(
+        `INSERT INTO calls (
+           external_id_hash,
+           call_timestamp,
+           encrypted_payload
+         )
+         VALUES ($1, $2, $3)
+         ON CONFLICT (external_id_hash) DO NOTHING
+         RETURNING id`,
+        [
+          externalIdHash,
           record.timestamp,
-          record.duration,
-          record.rawJson
-        ]);
-        const changes = db.getRowsModified();
-        if (changes === 1) inserted += 1;
-        else duplicates += 1;
+          encryptedPayload
+        ]
+      );
+
+      if (result.rowCount === 1) {
+        inserted++;
+      } else {
+        duplicates++;
       }
-    } finally {
-      stmt.free();
     }
 
-    db.run('COMMIT');
-    persistDatabase();
+    await client.query('COMMIT');
+
     return { inserted, duplicates };
   } catch (error) {
-    db.run('ROLLBACK');
+    await client.query('ROLLBACK');
     throw error;
-  }
-}
-
-function getCalls({ limit, offset }) {
-  const db = getDatabase();
-  const stmt = db.prepare(`
-    SELECT
-      id,
-      external_id AS externalId,
-      phone_number AS phoneNumber,
-      contact_name AS name,
-      call_type AS type,
-      call_timestamp AS timestamp,
-      duration,
-      raw_json AS raw,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM calls
-    ORDER BY call_timestamp DESC, id DESC
-    LIMIT ? OFFSET ?
-  `);
-
-  try {
-    stmt.bind([limit, offset]);
-    const rows = [];
-    while (stmt.step()) {
-      rows.push(stmt.getAsObject());
-    }
-    return rows.map(row => ({ ...row, raw: JSON.parse(row.raw) }));
   } finally {
-    stmt.free();
+    client.release();
   }
 }
 
-function countCalls() {
-  const db = getDatabase();
-  const result = db.exec('SELECT COUNT(*) AS count FROM calls');
-  return result[0]?.values[0]?.[0] ?? 0;
+async function getCalls({ limit, offset }) {
+  const result = await pool.query(
+    `SELECT id, encrypted_payload, created_at, call_timestamp
+     FROM calls
+     ORDER BY call_timestamp DESC, id DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
+
+  return result.rows.map(row => {
+    const payload = decryptJson(row.encrypted_payload);
+
+    return {
+      id: Number(row.id),
+      externalId: payload.externalId,
+      phoneNumber: payload.phoneNumber,
+      name: payload.name,
+      type: payload.type,
+      timestamp: payload.timestamp,
+      duration: payload.duration,
+      raw: payload.raw,
+      createdAt: row.created_at,
+      updatedAt: row.created_at
+    };
+  });
 }
 
-module.exports = { normalizeCall, insertBatch, getCalls, countCalls };
+async function countCalls() {
+  const result = await pool.query(
+    'SELECT COUNT(*) AS count FROM calls'
+  );
+
+  return Number(result.rows[0].count);
+}
+
+module.exports = {
+  normalizeCall,
+  insertBatch,
+  getCalls,
+  countCalls
+};
