@@ -156,3 +156,5 @@ temp/
 venv/
 __pycache__/
 *.py[cod]
+
+Zez-Backend/.env.example
