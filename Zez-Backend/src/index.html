@@ -1,0 +1,1734 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zez API Dashboard</title>
+
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0b1020;
+            --panel: #121a2d;
+            --border: #26334c;
+            --text: #e7edf7;
+            --muted: #98a8c2;
+            --accent: #7c9cff;
+            --green: #43d9a3;
+            --red: #ff7777;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+            background: #0e1528;
+        }
+
+        .header-inner,
+        main {
+            width: min(1100px, 94%);
+            margin: auto;
+        }
+
+        header h1 {
+            margin: 0 0 6px;
+            font-size: 27px;
+        }
+
+        p {
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .topbar,
+        .actions,
+        .endpoint-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        main {
+            padding: 24px 0 50px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 18px;
+            min-width: 0;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin: 0 0 14px;
+        }
+
+        h3 {
+            font-size: 15px;
+            margin: 0 0 10px;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 11px;
+            border-radius: 20px;
+            background: #202a3f;
+            font-size: 12px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #8492a8;
+        }
+
+        .status.ok .dot {
+            background: var(--green);
+        }
+
+        .status.error .dot {
+            background: var(--red);
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px 13px;
+            background: #202c45;
+            color: var(--text);
+        }
+
+        button:hover {
+            border-color: var(--accent);
+        }
+
+        button.primary {
+            background: #365bd6;
+            border-color: #365bd6;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: wait;
+        }
+
+        .endpoint {
+            margin-bottom: 9px;
+        }
+
+        .method {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 5px 7px;
+            border-radius: 5px;
+            margin-right: 8px;
+            background: #25344b;
+        }
+
+        .get {
+            color: #7de7bd;
+        }
+
+        .post {
+            color: #ffd27d;
+        }
+
+        code {
+            color: #b6c8ff;
+            overflow-wrap: anywhere;
+        }
+
+        label {
+            display: block;
+            margin: 15px 0 7px;
+            font-size: 13px;
+            color: #c6d1e3;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: #0b1222;
+            color: var(--text);
+            padding: 11px;
+            border-radius: 8px;
+        }
+
+        textarea {
+            min-height: 210px;
+            resize: vertical;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        pre {
+            padding: 16px;
+            background: #080e1b;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 480px;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .stat {
+            padding: 13px;
+            background: #0b1222;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 22px;
+            margin-top: 6px;
+        }
+
+        .route-link {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .route-link:hover {
+            text-decoration: underline;
+        }
+
+        .notice {
+            font-size: 12px;
+            border-left: 3px solid var(--accent);
+            padding-left: 12px;
+        }
+
+        footer {
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        @media (max-width: 500px) {
+            header {
+                padding: 18px 12px;
+            }
+
+            main {
+                width: 94%;
+                padding-top: 15px;
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Call Records Explorer */
+        .explorer {
+            grid-column: 1 / -1;
+        }
+
+        .explorer-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .filter-grid label {
+            margin-top: 0;
+        }
+
+        .filter-grid input,
+        .filter-grid select {
+            margin-top: 7px;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            max-height: 520px;
+        }
+
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 850px;
+            font-size: 13px;
+        }
+
+        .records-table th,
+        .records-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .records-table th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #1a2540;
+            color: #c9d6ef;
+        }
+
+        .records-table tbody tr {
+            cursor: pointer;
+        }
+
+        .records-table tbody tr:hover {
+            background: #1a2540;
+        }
+
+        .records-table tbody tr.selected {
+            background: #26385c;
+        }
+
+        .call-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: #233c35;
+            color: #80e5bd;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .call-badge.incoming {
+            background: #183c34;
+            color: #80e5bd;
+        }
+
+        .call-badge.outgoing {
+            background: #20385c;
+            color: #9fc5ff;
+        }
+
+        .call-badge.missed {
+            background: #48282e;
+            color: #ffaaaa;
+        }
+
+        .record-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin: 18px 0;
+        }
+
+        .record-summary .stat {
+            min-width: 0;
+        }
+
+        .record-summary strong {
+            overflow-wrap: anywhere;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .detail-item {
+            background: #0b1222;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 0;
+        }
+
+        .detail-item .detail-label {
+            color: var(--muted);
+            font-size: 11px;
+            margin-bottom: 6px;
+        }
+
+        .detail-item .detail-value {
+            overflow-wrap: anywhere;
+            font-size: 13px;
+        }
+
+        .detail-json {
+            max-height: 360px;
+        }
+
+        .empty-state {
+            padding: 30px 12px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .pager {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .record-count {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-inner">
+            <div class="topbar">
+                <div>
+                    <h1>Zez API Dashboard</h1>
+                    <div class="muted">
+                        Backend monitoring and endpoint testing
+                    </div>
+                </div>
+
+                <div id="serverStatus" class="status">
+                    <span class="dot"></span>
+                    <span id="statusText">Checking server...</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>API Configuration</h2>
+
+            <label for="baseUrl">Backend base URL</label>
+            <input
+                id="baseUrl"
+                type="url"
+                placeholder="http://localhost:3000"
+            >
+
+            <div class="actions" style="margin-top: 12px;">
+                <button class="primary" onclick="checkHealth()">
+                    Check health
+                </button>
+
+                <button onclick="copyUrl()">
+                    Copy base URL
+                </button>
+            </div>
+
+            <p class="notice">
+                Leave the base URL empty to use the same server that served
+                this page. If you open this page from your backend, this is
+                normally the easiest configuration.
+            </p>
+
+            <div class="stats">
+                <div class="stat">
+                    <span class="muted">Database health</span>
+                    <strong id="dbStatus">Unknown</strong>
+                </div>
+
+                <div class="stat">
+                    <span class="muted">Last HTTP status</span>
+                    <strong id="httpStatus">—</strong>
+                </div>
+
+                <div class="stat">
+                    <span class="muted">Records returned</span>
+                    <strong id="recordCount">—</strong>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2>1. Health Check</h2>
+
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <code>/health</code>
+                </div>
+
+                <p>Checks database connectivity using your existing route.</p>
+
+                <button class="primary" onclick="checkHealth()">
+                    Run health check
+                </button>
+            </section>
+
+            <section class="card">
+                <h2>2. Get Call Records</h2>
+
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <code>/api/calls</code>
+                </div>
+
+                <p>Retrieves call records with pagination.</p>
+
+                <label for="limit">Limit (1–200)</label>
+                <input id="limit" type="number" min="1" max="200" value="100">
+
+                <label for="offset">Offset</label>
+                <input id="offset" type="number" min="0" value="0">
+
+                <button
+                    class="primary"
+                    style="margin-top: 12px;"
+                    onclick="getCalls()"
+                >
+                    Fetch calls
+                </button>
+            </section>
+
+            <section class="card">
+                <h2>3. Readable Call Records</h2>
+
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <code>/api/calls/readable</code>
+                </div>
+
+                <p>
+                    Calls the readable endpoint. Its output depends on what
+                    your existing database functions return.
+                </p>
+
+                <button
+                    class="primary"
+                    onclick="getReadableCalls()"
+                >
+                    Fetch readable calls
+                </button>
+            </section>
+
+            <section class="card">
+                <h2>4. Submit Call Records</h2>
+
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <code>/api/calls</code>
+                </div>
+
+                <p>
+                    Submit one record, an array, or an object containing
+                    a <code>calls</code> array.
+                </p>
+
+                <label for="requestBody">Request JSON</label>
+                <textarea id="requestBody" spellcheck="false">{
+                    "calls": [
+                        {
+                        "id": "demo-call-001",
+                        "phoneNumber": "1234567890",
+                        "type": "INCOMING",
+                        "duration": 30,
+                        "timestamp": 1791840000000
+                        }
+                    ]
+                    }
+                </textarea>
+
+                <p class="notice">
+                    Example only. Adjust the field names to match
+                    normalizeCall() and your database schema. This request
+                    can insert data into your database.
+                </p>
+
+                <div class="actions">
+                    <button onclick="formatJson()">Format JSON</button>
+
+                    <button
+                        class="primary"
+                        onclick="postCalls()"
+                    >
+                        Send POST request
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <section class="card explorer">
+            <div class="explorer-toolbar">
+                <div>
+                    <h2>Call Records Explorer</h2>
+                    <p>
+                        Search, filter, inspect and export readable call records.
+                    </p>
+                </div>
+
+                <div class="actions">
+                    <button class="primary" onclick="getReadableCalls()">
+                        Refresh records
+                    </button>
+
+                    <button onclick="exportFilteredJSON()">
+                        Export JSON
+                    </button>
+
+                    <button onclick="exportFilteredCSV()">
+                        Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <div class="record-summary">
+                <div class="stat">
+                    <span class="muted">Loaded records</span>
+                    <strong id="loadedRecords">0</strong>
+                </div>
+
+                <div class="stat">
+                    <span class="muted">Matching filters</span>
+                    <strong id="filteredRecords">0</strong>
+                </div>
+
+                <div class="stat">
+                    <span class="muted">Selected call</span>
+                    <strong id="selectedCall">None</strong>
+                </div>
+            </div>
+
+            <h3>Filters</h3>
+
+            <div class="filter-grid">
+                <div>
+                    <label for="filterSearch">Search all common fields</label>
+                    <input
+                        id="filterSearch"
+                        type="search"
+                        placeholder="Name, number, ID..."
+                    >
+                </div>
+
+                <div>
+                    <label for="filterName">Contact name</label>
+                    <input
+                        id="filterName"
+                        type="search"
+                        placeholder="e.g. Mondo"
+                    >
+                </div>
+
+                <div>
+                    <label for="filterPhone">Phone number</label>
+                    <input
+                        id="filterPhone"
+                        type="search"
+                        placeholder="e.g. +91933..."
+                    >
+                </div>
+
+                <div>
+                    <label for="filterId">Database ID</label>
+                    <input
+                        id="filterId"
+                        type="search"
+                        placeholder="e.g. 53"
+                    >
+                </div>
+
+                <div>
+                    <label for="filterExternalId">External ID</label>
+                    <input
+                        id="filterExternalId"
+                        type="search"
+                        placeholder="e.g. android:1107"
+                    >
+                </div>
+
+                <div>
+                    <label for="filterType">Call type</label>
+                    <select id="filterType">
+                        <option value="">All types</option>
+                        <option value="INCOMING">Incoming</option>
+                        <option value="OUTGOING">Outgoing</option>
+                        <option value="MISSED">Missed</option>
+                        <option value="REJECTED">Rejected</option>
+                        <option value="BLOCKED">Blocked</option>
+                        <option value="VOICEMAIL">Voicemail</option>
+                        <option value="UNKNOWN">Unknown</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="filterFrom">Call date from</label>
+                    <input id="filterFrom" type="date">
+                </div>
+
+                <div>
+                    <label for="filterTo">Call date to</label>
+                    <input id="filterTo" type="date">
+                </div>
+
+                <div>
+                    <label for="filterMinDuration">Minimum duration (seconds)</label>
+                    <input
+                        id="filterMinDuration"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                    >
+                </div>
+
+                <div>
+                    <label for="filterMaxDuration">Maximum duration (seconds)</label>
+                    <input
+                        id="filterMaxDuration"
+                        type="number"
+                        min="0"
+                        placeholder="No limit"
+                    >
+                </div>
+
+                <div>
+                    <label for="filterCreatedFrom">Record created from</label>
+                    <input id="filterCreatedFrom" type="date">
+                </div>
+
+                <div>
+                    <label for="filterCreatedTo">Record created to</label>
+                    <input id="filterCreatedTo" type="date">
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="primary" onclick="applyCallFilters()">
+                    Apply filters
+                </button>
+
+                <button onclick="resetCallFilters()">
+                    Reset filters
+                </button>
+            </div>
+
+            <div class="explorer-toolbar" style="margin-top: 24px;">
+                <h3>Call records</h3>
+
+                <div>
+                    <label for="tablePageSize">Rows per page</label>
+                    <select id="tablePageSize">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Contact</th>
+                            <th>Phone number</th>
+                            <th>Type</th>
+                            <th>Call date/time</th>
+                            <th>Duration</th>
+                            <th>External ID</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="callTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-state">
+                                Click Refresh records to load your calls.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pager">
+                <span id="tablePageInfo" class="record-count">
+                    No records loaded.
+                </span>
+
+                <div class="actions">
+                    <button onclick="changeTablePage(-1)">
+                        Previous
+                    </button>
+
+                    <button onclick="changeTablePage(1)">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <section id="callDetails" style="margin-top: 28px;">
+                <h3>Selected call details</h3>
+
+                <div class="empty-state">
+                    Select a row in the table to inspect the full call record.
+                </div>
+            </section>
+        </section>
+
+        <section class="card">
+            <div class="endpoint-heading">
+                <h2>Request / Response Console</h2>
+
+                <button onclick="clearConsole()">
+                    Clear console
+                </button>
+            </div>
+
+            <div class="muted" id="lastRequest">
+                No request sent yet.
+            </div>
+
+            <h3 style="margin-top: 22px;">Response</h3>
+            <pre id="responseOutput">Responses will appear here.</pre>
+        </section>
+
+        <section class="card">
+            <h2>Available API Routes</h2>
+
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <a class="route-link" href="/health" target="_blank">
+                    /health
+                </a>
+            </div>
+
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <a class="route-link" href="/api/calls" target="_blank">
+                    /api/calls
+                </a>
+            </div>
+
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <a
+                    class="route-link"
+                    href="/api/calls/readable"
+                    target="_blank"
+                >
+                    /api/calls/readable
+                </a>
+            </div>
+
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <code>/api/calls</code>
+                <span class="muted"> — use the form above</span>
+            </div>
+
+            <p class="notice">
+                The browser links use the current page's origin. If you
+                configure a different backend URL, use the buttons above
+                to send requests to that configured server.
+            </p>
+        </section>
+
+        <footer>
+            Zez Backend · Express API · JSON response viewer
+        </footer>
+    </main>
+
+    <script>
+        const baseUrlInput = document.getElementById("baseUrl");
+        const responseOutput = document.getElementById("responseOutput");
+        const lastRequest = document.getElementById("lastRequest");
+        const httpStatus = document.getElementById("httpStatus");
+        const dbStatus = document.getElementById("dbStatus");
+        const recordCount = document.getElementById("recordCount");
+        const serverStatus = document.getElementById("serverStatus");
+        const statusText = document.getElementById("statusText");
+
+        function getBaseUrl() {
+            const value = baseUrlInput.value.trim();
+
+            if (!value) {
+                return window.location.origin;
+            }
+
+            return value.replace(/\/+$/, "");
+        }
+
+        function buildUrl(route) {
+            return getBaseUrl() + route;
+        }
+
+        function setServerStatus(ok, text) {
+            serverStatus.classList.remove("ok", "error");
+
+            if (ok === true) {
+                serverStatus.classList.add("ok");
+            } else if (ok === false) {
+                serverStatus.classList.add("error");
+            }
+
+            statusText.textContent = text;
+        }
+
+        function showResponse(data) {
+            responseOutput.textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function request(method, route, body) {
+            const url = buildUrl(route);
+            const started = performance.now();
+
+            lastRequest.textContent = method + " " + url;
+            responseOutput.textContent = "Request in progress...";
+
+            const buttons = document.querySelectorAll("button");
+            buttons.forEach(button => button.disabled = true);
+
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                };
+
+                if (body !== undefined) {
+                    options.headers["Content-Type"] = "application/json";
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(url, options);
+                const raw = await response.text();
+
+                let data;
+
+                try {
+                    data = raw ? JSON.parse(raw) : null;
+                } catch {
+                    data = { rawResponse: raw };
+                }
+
+                const elapsed = Math.round(performance.now() - started);
+
+                httpStatus.textContent = response.status;
+
+                showResponse({
+                    request: {
+                        method,
+                        url
+                    },
+                    status: response.status,
+                    statusText: response.statusText,
+                    durationMs: elapsed,
+                    response: data
+                });
+
+                if (response.ok && data?.success !== false) {
+                    if (method === "GET" && Array.isArray(data?.data)) {
+                        recordCount.textContent = data.data.length;
+                    }
+
+                    return { ok: true, status: response.status, data };
+                }
+
+                return { ok: false, status: response.status, data };
+            } catch (error) {
+                httpStatus.textContent = "Error";
+
+                showResponse({
+                    request: { method, url },
+                    error: error.message,
+                    explanation:
+                        "Check whether the server is running, the URL is correct, and cross-origin requests are permitted."
+                });
+
+                return { ok: false, error };
+            } finally {
+                buttons.forEach(button => button.disabled = false);
+            }
+        }
+
+        async function checkHealth() {
+            dbStatus.textContent = "Checking...";
+
+            const result = await request("GET", "/health");
+
+            if (result.ok && result.data?.status === "ok") {
+                dbStatus.textContent = "Connected";
+                setServerStatus(true, "Backend online");
+            } else {
+                dbStatus.textContent = "Unavailable";
+                setServerStatus(false, "Health check failed");
+            }
+        }
+
+        function readPagination() {
+            const limit = Number(document.getElementById("limit").value);
+            const offset = Number(document.getElementById("offset").value);
+
+            if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+                throw new Error("Limit must be an integer from 1 to 200.");
+            }
+
+            if (!Number.isInteger(offset) || offset < 0) {
+                throw new Error("Offset must be a non-negative integer.");
+            }
+
+            return { limit, offset };
+        }
+
+        async function getCalls() {
+            try {
+                const { limit, offset } = readPagination();
+
+                await request(
+                    "GET",
+                    `/api/calls?limit=${limit}&offset=${offset}`
+                );
+            } catch (error) {
+                showResponse({ error: error.message });
+            }
+        }
+
+        async function oldgetReadableCalls() {
+            try {
+                const { limit, offset } = readPagination();
+
+                await request(
+                    "GET",
+                    `/api/calls/readable?limit=${limit}&offset=${offset}`
+                );
+            } catch (error) {
+                showResponse({ error: error.message });
+            }
+        }
+
+
+        async function getReadableCalls() {
+            try {
+                const { limit, offset } = readPagination();
+
+                const result = await request(
+                    "GET",
+                    `/api/calls/readable?limit=${limit}&offset=${offset}`
+                );
+
+                if (!result.ok) {
+                    return;
+                }
+
+                if (
+                    !result.data ||
+                    !Array.isArray(result.data.data)
+                ) {
+                    showResponse({
+                        error: "Invalid readable API response",
+                        message: "Expected an array at response.data."
+                    });
+                    return;
+                }
+
+                loadCallRecords(result.data.data);
+
+                lastRequest.textContent +=
+                    ` · Loaded ${result.data.data.length} records`;
+            } catch (error) {
+                showResponse({
+                    error: error.message || "Could not load readable calls."
+                });
+            }
+        }
+
+
+        async function postCalls() {
+            let body;
+
+            try {
+                body = JSON.parse(
+                    document.getElementById("requestBody").value
+                );
+            } catch (error) {
+                showResponse({
+                    error: "Invalid JSON",
+                    message: error.message
+                });
+                return;
+            }
+
+            await request("POST", "/api/calls", body);
+        }
+
+        function formatJson() {
+            const textarea = document.getElementById("requestBody");
+
+            try {
+                textarea.value = JSON.stringify(
+                    JSON.parse(textarea.value),
+                    null,
+                    2
+                );
+            } catch (error) {
+                showResponse({
+                    error: "Invalid JSON",
+                    message: error.message
+                });
+            }
+        }
+
+        async function copyUrl() {
+            try {
+                await navigator.clipboard.writeText(getBaseUrl());
+                lastRequest.textContent = "Copied: " + getBaseUrl();
+            } catch (error) {
+                showResponse({
+                    error: "Could not copy the URL",
+                    message: error.message
+                });
+            }
+        }
+
+        function clearConsole() {
+            responseOutput.textContent = "Responses will appear here.";
+            lastRequest.textContent = "No request sent yet.";
+            httpStatus.textContent = "—";
+            recordCount.textContent = "—";
+        }
+
+        // Automatically check the backend when the page loads.
+        checkHealth();
+
+        let allCallRecords = [];
+        let filteredCallRecords = [];
+        let selectedCallId = null;
+        let tablePage = 0;
+
+        const filterIds = [
+            "filterSearch",
+            "filterName",
+            "filterPhone",
+            "filterId",
+            "filterExternalId",
+            "filterType",
+            "filterFrom",
+            "filterTo",
+            "filterMinDuration",
+            "filterMaxDuration",
+            "filterCreatedFrom",
+            "filterCreatedTo"
+        ];
+
+        function escapeText(value) {
+            return value == null ? "" : String(value);
+        }
+
+        function normalizeText(value) {
+            return escapeText(value).trim().toLowerCase();
+        }
+
+        function getCallTimestamp(call) {
+            const timestamp = Number(call.timestamp);
+
+            return Number.isFinite(timestamp) && timestamp > 0
+                ? timestamp
+                : null;
+        }
+
+        function formatCallDate(timestamp) {
+            if (timestamp == null) return "Unknown";
+
+            const date = new Date(timestamp);
+
+            return Number.isNaN(date.getTime())
+                ? "Invalid date"
+                : date.toLocaleString();
+        }
+
+        function formatDuration(value) {
+            const seconds = Number(value);
+
+            if (!Number.isFinite(seconds) || seconds < 0) {
+                return "Unknown";
+            }
+
+            const wholeSeconds = Math.floor(seconds);
+            const hours = Math.floor(wholeSeconds / 3600);
+            const minutes = Math.floor((wholeSeconds % 3600) / 60);
+            const remainingSeconds = wholeSeconds % 60;
+
+            if (hours > 0) {
+                return `${hours}h ${minutes}m ${remainingSeconds}s`;
+            }
+
+            if (minutes > 0) {
+                return `${minutes}m ${remainingSeconds}s`;
+            }
+
+            return `${remainingSeconds}s`;
+        }
+
+        function getCreatedDate(call) {
+            if (!call.createdAt) return null;
+
+            const date = new Date(call.createdAt);
+
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function getLocalDateString(date) {
+            if (!date || Number.isNaN(date.getTime())) return "";
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+
+            return `${year}-${month}-${day}`;
+        }
+
+        function matchesDateRange(value, from, to) {
+            if (!from && !to) return true;
+
+            if (value == null || value === "") return false;
+
+            const date = value instanceof Date
+                ? value
+                : new Date(value);
+
+            if (Number.isNaN(date.getTime())) return false;
+
+            const day = getLocalDateString(date);
+
+            if (from && day < from) return false;
+            if (to && day > to) return false;
+
+            return true;
+        }
+
+        function createTableCell(value) {
+            const td = document.createElement("td");
+            td.textContent = escapeText(value);
+            return td;
+        }
+
+        function loadCallRecords(records) {
+            if (!Array.isArray(records)) {
+                showResponse({
+                    error: "Unexpected API response",
+                    message: "The response data field is not an array."
+                });
+                return;
+            }
+
+            allCallRecords = records;
+            tablePage = 0;
+
+            document.getElementById("loadedRecords").textContent =
+                allCallRecords.length;
+
+            applyCallFilters();
+
+            // Keep the selection only if the selected record still exists.
+            if (
+                selectedCallId !== null &&
+                !allCallRecords.some(
+                    call => String(call.id) === String(selectedCallId)
+                )
+            ) {
+                selectedCallId = null;
+                document.getElementById("selectedCall").textContent = "None";
+                renderSelectedCall();
+            } else if (selectedCallId !== null) {
+                renderSelectedCall();
+            }
+        }
+
+        function applyCallFilters() {
+            const value = id => document.getElementById(id).value.trim();
+
+            const search = normalizeText(value("filterSearch"));
+            const name = normalizeText(value("filterName"));
+            const phone = normalizeText(value("filterPhone"));
+            const id = normalizeText(value("filterId"));
+            const externalId = normalizeText(value("filterExternalId"));
+            const type = value("filterType").toUpperCase();
+
+            const from = value("filterFrom");
+            const to = value("filterTo");
+            const createdFrom = value("filterCreatedFrom");
+            const createdTo = value("filterCreatedTo");
+
+            const minDurationValue = value("filterMinDuration");
+            const maxDurationValue = value("filterMaxDuration");
+
+            const minDuration = minDurationValue === ""
+                ? null
+                : Number(minDurationValue);
+
+            const maxDuration = maxDurationValue === ""
+                ? null
+                : Number(maxDurationValue);
+
+            if (
+                (minDuration !== null &&
+                    (!Number.isFinite(minDuration) || minDuration < 0)) ||
+                (maxDuration !== null &&
+                    (!Number.isFinite(maxDuration) || maxDuration < 0))
+            ) {
+                showResponse({
+                    error: "Invalid duration filter",
+                    message: "Duration filters must be non-negative numbers."
+                });
+                return;
+            }
+
+            if (
+                minDuration !== null &&
+                maxDuration !== null &&
+                minDuration > maxDuration
+            ) {
+                showResponse({
+                    error: "Invalid duration range",
+                    message: "Minimum duration cannot exceed maximum duration."
+                });
+                return;
+            }
+
+            filteredCallRecords = allCallRecords.filter(call => {
+                const callName = normalizeText(call.name);
+                const callPhone = normalizeText(call.phoneNumber);
+                const callId = normalizeText(call.id);
+                const callExternalId = normalizeText(call.externalId);
+                const callType = normalizeText(call.type).toUpperCase();
+
+                const searchable = [
+                    call.id,
+                    call.externalId,
+                    call.phoneNumber,
+                    call.name,
+                    call.type,
+                    call.timestamp,
+                    call.duration,
+                    call.createdAt,
+                    call.updatedAt,
+                    call.raw?.id,
+                    call.raw?.phoneNumber,
+                    call.raw?.name,
+                    call.raw?.type
+                ].map(normalizeText).join(" ");
+
+                const duration = Number(call.duration);
+                const validDuration =
+                    call.duration !== null &&
+                    call.duration !== undefined &&
+                    call.duration !== "" &&
+                    Number.isFinite(duration) &&
+                    duration >= 0;
+
+                if (search && !searchable.includes(search)) return false;
+                if (name && !callName.includes(name)) return false;
+                if (phone && !callPhone.includes(phone)) return false;
+                if (id && !callId.includes(id)) return false;
+
+                if (
+                    externalId &&
+                    !callExternalId.includes(externalId)
+                ) {
+                    return false;
+                }
+
+                if (type && callType !== type) return false;
+
+                if (from || to) {
+                    const timestamp = getCallTimestamp(call);
+
+                    if (!matchesDateRange(
+                        timestamp == null ? null : new Date(timestamp),
+                        from,
+                        to
+                    )) {
+                        return false;
+                    }
+                }
+
+                if (createdFrom || createdTo) {
+                    const created = getCreatedDate(call);
+
+                    if (!matchesDateRange(
+                        created,
+                        createdFrom,
+                        createdTo
+                    )) {
+                        return false;
+                    }
+                }
+
+                if (minDuration !== null) {
+                    if (!validDuration || duration < minDuration) return false;
+                }
+
+                if (maxDuration !== null) {
+                    if (!validDuration || duration > maxDuration) return false;
+                }
+
+                return true;
+            });
+
+            tablePage = 0;
+
+            document.getElementById("filteredRecords").textContent =
+                filteredCallRecords.length;
+
+            renderCallTable();
+        }
+
+        function renderCallTable() {
+            const tbody = document.getElementById("callTableBody");
+            const pageSize = Number(
+                document.getElementById("tablePageSize").value
+            ) || 25;
+
+            const totalPages = Math.max(
+                1,
+                Math.ceil(filteredCallRecords.length / pageSize)
+            );
+
+            tablePage = Math.min(tablePage, totalPages - 1);
+            tablePage = Math.max(0, tablePage);
+
+            const start = tablePage * pageSize;
+
+            const pageRecords = filteredCallRecords.slice(
+                start,
+                start + pageSize
+            );
+
+            tbody.replaceChildren();
+
+            if (pageRecords.length === 0) {
+                const tr = document.createElement("tr");
+                const td = document.createElement("td");
+
+                td.colSpan = 7;
+                td.className = "empty-state";
+                td.textContent = allCallRecords.length
+                    ? "No records match your filters."
+                    : "No call records loaded yet.";
+
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            }
+
+            for (const call of pageRecords) {
+                const tr = document.createElement("tr");
+
+                if (String(call.id) === String(selectedCallId)) {
+                    tr.classList.add("selected");
+                }
+
+                tr.append(
+                    createTableCell(call.id),
+                    createTableCell(call.name || "Unknown"),
+                    createTableCell(call.phoneNumber || "Unknown")
+                );
+
+                const typeCell = document.createElement("td");
+                const badge = document.createElement("span");
+                const type = escapeText(call.type || "UNKNOWN").toUpperCase();
+
+                badge.className = "call-badge";
+
+                if (type === "INCOMING") {
+                    badge.classList.add("incoming");
+                } else if (type === "OUTGOING") {
+                    badge.classList.add("outgoing");
+                } else if (type === "MISSED") {
+                    badge.classList.add("missed");
+                }
+
+                badge.textContent = type;
+                typeCell.appendChild(badge);
+                tr.appendChild(typeCell);
+
+                const timestamp = getCallTimestamp(call);
+
+                tr.append(
+                    createTableCell(formatCallDate(timestamp)),
+                    createTableCell(formatDuration(call.duration)),
+                    createTableCell(call.externalId)
+                );
+
+                tr.addEventListener("click", () => {
+                    selectedCallId = call.id;
+                    document.getElementById("selectedCall").textContent =
+                        `#${call.id}`;
+
+                    renderCallTable();
+                    renderSelectedCall();
+                });
+
+                tbody.appendChild(tr);
+            }
+
+            const info = document.getElementById("tablePageInfo");
+
+            info.textContent = filteredCallRecords.length
+                ? `Showing ${start + 1}–${Math.min(
+                    start + pageSize,
+                    filteredCallRecords.length
+                )} of ${filteredCallRecords.length} matching records · Page ${
+                    tablePage + 1
+                } of ${totalPages}`
+                : "No matching records.";
+
+            document.getElementById("recordCount").textContent =
+                filteredCallRecords.length;
+        }
+
+        function changeTablePage(direction) {
+            const pageSize = Number(
+                document.getElementById("tablePageSize").value
+            ) || 25;
+
+            const totalPages = Math.max(
+                1,
+                Math.ceil(filteredCallRecords.length / pageSize)
+            );
+
+            const nextPage = tablePage + direction;
+
+            if (nextPage < 0 || nextPage >= totalPages) return;
+
+            tablePage = nextPage;
+            renderCallTable();
+        }
+
+        function renderSelectedCall() {
+            const container = document.getElementById("callDetails");
+
+            container.replaceChildren();
+
+            const heading = document.createElement("h3");
+            heading.textContent = "Selected call details";
+            container.appendChild(heading);
+
+            const call = allCallRecords.find(
+                item => String(item.id) === String(selectedCallId)
+            );
+
+            if (!call) {
+                const empty = document.createElement("div");
+                empty.className = "empty-state";
+                empty.textContent =
+                    "Select a row in the table to inspect the full call record.";
+
+                container.appendChild(empty);
+                return;
+            }
+
+            const fields = [
+                ["Database ID", call.id],
+                ["External ID", call.externalId],
+                ["Contact name", call.name],
+                ["Phone number", call.phoneNumber],
+                ["Call type", call.type],
+                ["Call timestamp", formatCallDate(getCallTimestamp(call))],
+                ["Duration", formatDuration(call.duration)],
+                ["Created at", call.createdAt],
+                ["Updated at", call.updatedAt]
+            ];
+
+            const grid = document.createElement("div");
+            grid.className = "details-grid";
+
+            for (const [label, value] of fields) {
+                const item = document.createElement("div");
+                item.className = "detail-item";
+
+                const labelElement = document.createElement("div");
+                labelElement.className = "detail-label";
+                labelElement.textContent = label;
+
+                const valueElement = document.createElement("div");
+                valueElement.className = "detail-value";
+                valueElement.textContent =
+                    value == null || value === "" ? "—" : String(value);
+
+                item.append(labelElement, valueElement);
+                grid.appendChild(item);
+            }
+
+            container.appendChild(grid);
+
+            const rawHeading = document.createElement("h3");
+            rawHeading.textContent = "Raw call data";
+            rawHeading.style.marginTop = "20px";
+
+            const rawJson = document.createElement("pre");
+            rawJson.className = "detail-json";
+            rawJson.textContent = JSON.stringify(call.raw ?? null, null, 2);
+
+            const fullHeading = document.createElement("h3");
+            fullHeading.textContent = "Complete record JSON";
+            fullHeading.style.marginTop = "20px";
+
+            const fullJson = document.createElement("pre");
+            fullJson.className = "detail-json";
+            fullJson.textContent = JSON.stringify(call, null, 2);
+
+            container.append(rawHeading, rawJson, fullHeading, fullJson);
+        }
+
+        function resetCallFilters() {
+            for (const id of filterIds) {
+                document.getElementById(id).value = "";
+            }
+
+            applyCallFilters();
+        }
+
+        function downloadFile(filename, content, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.download = filename;
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function exportFilteredJSON() {
+            downloadFile(
+                "zez-filtered-calls.json",
+                JSON.stringify(filteredCallRecords, null, 2),
+                "application/json"
+            );
+        }
+
+        function exportFilteredCSV() {
+            const columns = [
+                "id",
+                "externalId",
+                "phoneNumber",
+                "name",
+                "type",
+                "timestamp",
+                "duration",
+                "createdAt",
+                "updatedAt"
+            ];
+
+            function csvCell(value) {
+                let text = value == null ? "" : String(value);
+
+                // Prevent spreadsheet formula injection.
+                if (/^[\s]*[=+\-@]/.test(text)) {
+                    text = "'" + text;
+                }
+
+                return '"' + text.replace(/"/g, '""') + '"';
+            }
+
+            const rows = [
+                columns.map(csvCell).join(","),
+                ...filteredCallRecords.map(call =>
+                    columns.map(key => csvCell(call[key])).join(",")
+                )
+            ];
+
+            downloadFile(
+                "zez-filtered-calls.csv",
+                "\uFEFF" + rows.join("\r\n"),
+                "text/csv;charset=utf-8"
+            );
+        }
+
+        // Reapply filters immediately as values change.
+        for (const id of filterIds) {
+            const element = document.getElementById(id);
+
+            element.addEventListener("input", applyCallFilters);
+            element.addEventListener("change", applyCallFilters);
+        }
+
+        document.getElementById("tablePageSize").addEventListener(
+            "change",
+            () => {
+                tablePage = 0;
+                renderCallTable();
+            }
+        );
+
+    </script>
+</body>
+</html>

@@ -1,6 +1,9 @@
 const { Pool } = require('pg');
+require("dotenv").config();
 
 const connectionString = process.env.DATABASE_URL;
+// const connectionString="postgresql://neondb_owner:npg_Qxz43HdmWSvE@ep-still-night-b4paxi42-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
 
 if (!connectionString) {
   throw new Error('DATABASE_URL is not configured.');

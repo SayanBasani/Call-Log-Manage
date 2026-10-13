@@ -8,9 +8,6 @@ Uses Node.js, Express, and SQLite through `sql.js` (WebAssembly), avoiding nativ
 npm install
 npm run dev
 ```
-
-Default base URL: `http://localhost:3000`.
-
 ## Routes
 
 - `GET /health`
@@ -48,3 +45,11 @@ Repeat the POST: the second result should show `inserted: 0`, `duplicates: 1`.
 The database is stored at `data/zez.sqlite` by default. `sql.js` loads it into memory and writes the exported database file after each batch. For production/high concurrency, prefer a server SQLite driver with durable transactions or a database server.
 
 This is an unauthenticated prototype. Do not expose real call records publicly until HTTPS and access controls are in place.
+
+
+# Generate 64 digit key
+```js
+const crypto = require('crypto');
+const key = crypto.randomBytes(32).toString('hex');
+console.log(key);
+```

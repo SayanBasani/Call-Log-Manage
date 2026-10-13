@@ -1,4 +1,7 @@
 const crypto = require('node:crypto');
+const { gcm } = require("@noble/ciphers/aes.js");
+const { managedNonce, hexToBytes, bytesToUtf8 } =
+  require("@noble/ciphers/utils.js");
 
 function getKey() {
   const key = process.env.ENCRYPTION_KEY;
@@ -65,4 +68,91 @@ function decryptJson(encrypted) {
   return JSON.parse(plaintext.toString('utf8'));
 }
 
-module.exports = { encryptJson, decryptJson };
+function decryptPortableHex_(encryptedHex) {
+  const keyHex = process.env.PORTABLE_ENCRYPTION_KEY;
+
+  if (!keyHex || !/^[0-9a-fA-F]{64}$/.test(keyHex)) {
+    throw new Error(
+      "PORTABLE_ENCRYPTION_KEY must be a 64-character hex key."
+    );
+  }
+
+  if (!/^(?:[0-9a-fA-F]{2})+$/.test(encryptedHex)) {
+    throw new Error("Invalid portable ciphertext format.");
+  }
+
+  const packed = Buffer.from(encryptedHex, "hex");
+
+  // Format: 12-byte nonce + ciphertext + 16-byte GCM tag.
+  if (packed.length < 28) {
+    throw new Error("Portable ciphertext is too short.");
+  }
+
+  const iv = packed.subarray(0, 12);
+  const tag = packed.subarray(packed.length - 16);
+  const ciphertext = packed.subarray(12, packed.length - 16);
+  const key = Buffer.from(keyHex, "hex");
+
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    key,
+    iv
+  );
+
+  decipher.setAuthTag(tag);
+
+  const plaintext = Buffer.concat([
+    decipher.update(ciphertext),
+    decipher.final(),
+  ]);
+
+  return JSON.parse(plaintext.toString("utf8"));
+}
+
+const portableGcm = managedNonce(gcm);
+
+function decryptPortableHex(encryptedHex) {
+  const keyHex = process.env.PORTABLE_ENCRYPTION_KEY;
+
+  if (!keyHex || !/^[0-9a-fA-F]{64}$/.test(keyHex)) {
+    throw new Error(
+      "PORTABLE_ENCRYPTION_KEY must be a 64-character hex key."
+    );
+  }
+
+  if (
+    typeof encryptedHex !== "string" ||
+    !/^(?:[0-9a-fA-F]{2})+$/.test(encryptedHex)
+  ) {
+    throw new Error("Invalid portable ciphertext format.");
+  }
+
+  const key = hexToBytes(keyHex);
+  const encrypted = hexToBytes(encryptedHex);
+
+  // Use the same managedNonce GCM implementation as the Expo app.
+  const plaintext = portableGcm(key).decrypt(encrypted);
+  const json = bytesToUtf8(plaintext);
+
+  return JSON.parse(json);
+}
+
+function decryptStoredPayload(encrypted) {
+  if (typeof encrypted !== "string") {
+    throw new Error("Encrypted payload must be a string.");
+  }
+      // Portable client-side ciphertext is hexadecimal.
+      if (/^(?:[0-9a-fA-F]{2})+$/.test(encrypted)) {
+        return decryptPortableHex(encrypted);
+      }
+
+  // Older server-side records use the JSON envelope.
+  return decryptJson(encrypted);
+}
+
+
+module.exports = {
+  encryptJson,
+  decryptJson,
+  decryptStoredPayload,
+};

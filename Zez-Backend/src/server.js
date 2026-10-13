@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const { initializeDatabase, closeDatabase } = require('./db');
 const { normalizeCall, insertBatch, getCalls, countCalls } = require('./calls');
+require("dotenv").config();
+
+const path = require('path');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -10,6 +13,36 @@ const host = '0.0.0.0';
 app.disable('x-powered-by');
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+
+// Log every incoming API request in the terminal
+app.use((req, res, next) => {
+  const startTime = Date.now();
+
+  console.log('\n========== INCOMING REQUEST ==========');
+  console.log('Method:', req.method);
+  console.log('Route:', req.originalUrl);
+  console.log('Query parameters:', req.query);
+  console.log('Route parameters:', req.params);
+
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('Request body:', req.body);
+  }
+
+  console.log('======================================');
+
+  res.on('finish', () => {
+    console.log(
+      `[API] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now() - startTime} ms)`
+    );
+  });
+
+  next();
+});
+
+// modified
+app.get('/',function(req,res){
+  res.sendFile(path.join(__dirname,'/index.html'));
+});
 
 app.get('/health', async (_req, res) => {
   try {
@@ -107,6 +140,98 @@ app.post('/api/calls', async (req, res) => {
   }
 });
 
+// GET /api/calls/readable
+// Retrieve encrypted database records and return decrypted JSON.
+// app.get('/api/calls/readable', async (req, res) => {
+//   try {
+//     const limit = Math.min(
+//       200,
+//       Math.max(1, Number.parseInt(req.query.limit, 10) || 100)
+//     );
+
+//     const offset = Math.max(
+//       0,
+//       Number.parseInt(req.query.offset, 10) || 0
+//     );
+
+//     const [total, calls] = await Promise.all([
+//       countCalls(),
+//       getCalls({ limit, offset })
+//     ]);
+
+//     console.log("total----------------------")
+//     console.log(total)
+//     console.log(calls)
+//     console.log("calls--------------------------")
+
+//     return res.status(200).json({
+//       success: true,
+//       message: 'Call records retrieved and decrypted successfully.',
+//       data: calls,
+//       pagination: {
+//         limit,
+//         offset,
+//         total,
+//         hasMore: offset + calls.length < total
+//       }
+//     });
+//   } catch (error) {
+//     // Keep sensitive details out of the HTTP response.
+//     console.error('GET /api/calls/readable failed:', error.message);
+
+//     return res.status(500).json({
+//       success: false,
+//       error: {
+//         code: 'DECRYPTION_OR_DATABASE_ERROR',
+//         message: 'Could not retrieve and decrypt call records.'
+//       }
+//     });
+//   }
+// });
+
+
+app.get("/api/calls/readable", async (req, res) => {
+  try {
+    const limit = Math.min(
+      200,
+      Math.max(1, Number.parseInt(req.query.limit, 10) || 100)
+    );
+
+    const offset = Math.max(
+      0,
+      Number.parseInt(req.query.offset, 10) || 0
+    );
+
+    const [total, calls] = await Promise.all([
+      countCalls(),
+      getCalls({ limit, offset }),
+    ]);
+
+    return res.json({
+      success: true,
+      message: "Call records retrieved and decrypted successfully.",
+      data: calls,
+      pagination: {
+        limit,
+        offset,
+        total,
+        hasMore: offset + calls.length < total,
+      },
+    });
+  } catch (error) {
+    console.error("GET /api/calls/readable failed:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "DECRYPTION_OR_DATABASE_ERROR",
+        message: "Could not retrieve and decrypt call records.",
+      },
+    });
+  }
+});
+
+
 app.use((error, _req, res, _next) => {
   if (error?.type === 'entity.too.large') {
     return res.status(413).json({
@@ -134,6 +259,7 @@ async function startServer() {
 
   const server = app.listen(port, host, () => {
     console.log(`Zez API listening on port ${port}`);
+    console.log('Server started at http://localhost:' + port);
     console.log('GET  /health');
     console.log('GET  /api/calls');
     console.log('POST /api/calls');

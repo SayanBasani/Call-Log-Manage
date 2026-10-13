@@ -1,6 +1,8 @@
 const crypto = require('node:crypto');
+
 const { pool } = require('./db');
 const { encryptJson, decryptJson } = require('./crypto');
+const { decryptStoredPayload } = require('./crypto');
 
 function asString(value, fallback = '') {
   if (value === undefined || value === null) return fallback;
@@ -94,6 +96,8 @@ async function insertBatch(records) {
   }
 }
 
+
+
 async function getCalls({ limit, offset }) {
   const result = await pool.query(
     `SELECT id, encrypted_payload, created_at, call_timestamp
@@ -103,9 +107,97 @@ async function getCalls({ limit, offset }) {
     [limit, offset]
   );
 
+  // return result.rows.map((row) => {
   return result.rows.map((row) => {
-    const payload = decryptJson(row.encrypted_payload);
+    try {
+    const stored = String(row.encrypted_payload);
+    const separatorIndex = stored.indexOf("--");
 
+    if (separatorIndex <= 0) {
+      // Older records that contain only the encrypted envelope or ciphertext.
+      const payload = decryptStoredPayload(stored);
+
+      return {
+        id: Number(row.id),
+        externalId: payload.externalId ?? "",
+        phoneNumber: payload.phoneNumber ?? "",
+        name: payload.name ?? "",
+        type: payload.type ?? "UNKNOWN",
+        timestamp: payload.timestamp ?? row.call_timestamp,
+        duration: Number(payload.duration ?? 0),
+        raw: payload.raw ?? payload,
+        createdAt: row.created_at,
+        updatedAt: row.created_at,
+      };
+    }
+
+    // Mobile format: callId--hexCiphertext
+    const recordId = stored.slice(0, separatorIndex);
+    const encryptedPayload = stored.slice(separatorIndex + 2);
+
+    if (!/^(?:[0-9a-fA-F]{2})+$/.test(encryptedPayload)) {
+      throw new Error(
+        `Invalid hexadecimal ciphertext for record ${row.id}`
+      );
+    }
+
+    const payload = decryptStoredPayload(encryptedPayload);
+
+    return {
+      id: Number(row.id),
+      externalId: payload.externalId ?? `android:${recordId}`,
+      phoneNumber: payload.phoneNumber ?? "",
+      name: payload.name ?? "",
+      type: payload.type ?? "UNKNOWN",
+      timestamp: payload.timestamp ?? row.call_timestamp,
+      duration: Number(payload.duration ?? 0),
+      raw: payload.raw ?? payload,
+      createdAt: row.created_at,
+      updatedAt: row.created_at,
+    };
+  // });
+    } catch (error) {
+    console.error("Failed to decrypt call record:", {
+      id: row.id,
+      error: error.message,
+    });
+
+    throw error;
+  }
+});
+}
+
+
+
+async function old_getCalls({ limit, offset }) {
+  const result = await pool.query(
+    `SELECT id, encrypted_payload, created_at, call_timestamp
+     FROM calls
+     ORDER BY call_timestamp DESC, id DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
+
+  return result.rows.map((row) => {
+    // const payload = decryptJson(row.encrypted_payload);
+    const encrypted_String = String(row.encrypted_payload)
+    const main_encrypted_String = encrypted_String.slice(encrypted_String.indexOf("--")+2);
+    // console.log(encrypted_String+" "+main_encrypted_String)
+
+    const isHex =
+      typeof main_encrypted_String === "string" &&
+      /^(?:[0-9a-fA-F]{2})+$/.test(main_encrypted_String);
+
+    console.log("Checking record:", {
+      id: row.id,
+      format: isHex ? "portable-hex" : "server-envelope"
+    });
+
+    console.log("1-----------")
+    const payload = decryptStoredPayload(main_encrypted_String);
+    console.log("2-----------")
+    console.log(payload);
+    
     return {
       id: Number(row.id),
       externalId: payload.externalId,
@@ -126,4 +218,12 @@ async function countCalls() {
   return Number(result.rows[0].count);
 }
 
-module.exports = { normalizeCall, insertBatch, getCalls, countCalls };
+module.exports = {
+  normalizeCall,
+  insertBatch,
+  getCalls,
+  countCalls,
+};
+
+
+
