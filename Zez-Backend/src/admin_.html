@@ -1,0 +1,599 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zez | Admin Dashboard</title>
+  <style>
+    :root {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+      color: #e8edf6;
+      background: #0b1020;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    body { margin: 0; min-height: 100vh; }
+
+    button, input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      border-radius: 9px;
+      padding: 10px 14px;
+      color: white;
+      background: #5268ed;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    input {
+      width: 100%;
+      min-width: 0;
+      padding: 11px 12px;
+      color: #f4f6fb;
+      background: #10182b;
+      border: 1px solid #303b52;
+      border-radius: 9px;
+      outline: none;
+    }
+
+    input:focus { border-color: #8290ff; }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #aebbd0;
+      font-size: 13px;
+    }
+
+    .wrap {
+      width: min(1440px, 100%);
+      margin: auto;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    h1 { font-size: 25px; margin: 0 0 5px; }
+    h2 { font-size: 17px; margin: 0 0 16px; }
+    p { color: #aebbd0; }
+    .muted { color: #9caac1; font-size: 13px; }
+    .hidden { display: none !important; }
+
+    .panel {
+      background: #131b2d;
+      border: 1px solid #26334a;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      min-width: 0;
+    }
+
+    .login {
+      max-width: 460px;
+      margin: 9vh auto 0;
+    }
+
+    .stack { display: grid; gap: 14px; }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .stat-label { color: #aebbd0; font-size: 13px; }
+    .stat-value { font-size: 25px; font-weight: 700; margin-top: 8px; }
+
+    .status {
+      margin: 12px 0 0;
+      font-size: 14px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .error { color: #ff929d; }
+    .success { color: #8fe3b2; }
+
+    .table-scroll {
+      overflow-x: auto;
+      border: 1px solid #29364d;
+      border-radius: 10px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 850px;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #29364d;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #18233a;
+      color: #cbd5e6;
+      font-weight: 600;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    code, pre {
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .details {
+      max-width: 560px;
+      max-height: 360px;
+      overflow: auto;
+      margin: 8px 0 0;
+      padding: 12px;
+      border-radius: 8px;
+      background: #0a1020;
+      color: #d5def0;
+      font-size: 12px;
+    }
+
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .secondary { background: #29364d; }
+    .danger { background: #a33a4b; }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 760px) {
+      .wrap { padding: 14px; }
+      header { align-items: flex-start; }
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      .stats { grid-template-columns: 1fr; }
+      h1 { font-size: 21px; }
+    }
+
+    @media (max-width: 430px) {
+      .toolbar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div>
+        <h1>Zez Admin</h1>
+        <div class="muted">Secure call-history management</div>
+      </div>
+      <button id="logoutBtn" class="danger hidden" type="button">Logout</button>
+    </header>
+
+    <section id="loginPanel" class="panel login">
+      <h2>Master access</h2>
+      <p>Enter your administrator password to load call records from Neon.</p>
+      <form id="loginForm" class="stack">
+        <div>
+          <label for="password">Master password</label>
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            maxlength="512"
+            placeholder="Enter master password"
+          />
+        </div>
+        <button id="loginBtn" type="submit">Authenticate and load data</button>
+      </form>
+      <div id="loginStatus" class="status" role="status"></div>
+      <p class="muted">
+        The password is kept in page memory only and is cleared on logout
+        or when this page is refreshed.
+      </p>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <div class="stats">
+        <div class="panel">
+          <div class="stat-label">Records on this page</div>
+          <div class="stat-value" id="pageCount">0</div>
+        </div>
+        <div class="panel">
+          <div class="stat-label">More records available</div>
+          <div class="stat-value" id="moreCount">No</div>
+        </div>
+        <div class="panel">
+          <div class="stat-label">Current filter</div>
+          <div class="stat-value" style="font-size:16px" id="filterSummary">All devices</div>
+        </div>
+      </div>
+
+      <section class="panel">
+        <h2>Filter call history</h2>
+        <form id="filterForm" class="toolbar">
+          <div>
+            <label for="deviceId">Device UUID (optional)</label>
+            <input id="deviceId" placeholder="All devices" />
+          </div>
+          <div>
+            <label for="fromDate">From date (optional)</label>
+            <input id="fromDate" type="datetime-local" />
+          </div>
+          <div>
+            <label for="toDate">To date (optional)</label>
+            <input id="toDate" type="datetime-local" />
+          </div>
+          <div>
+            <label for="limit">Records per page</label>
+            <input id="limit" type="number" min="1" max="100" value="50" required />
+          </div>
+          <div class="row-actions">
+            <button type="submit">Apply filters</button>
+            <button type="button" id="clearFilters" class="secondary">Clear filters</button>
+          </div>
+        </form>
+        <div id="dataStatus" class="status" role="status"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Call records</h2>
+        <div class="muted" style="margin-bottom:12px">
+          Records are ordered by database ID, newest ID first. Database IDs can have gaps.
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Database ID</th>
+                <th>Device</th>
+                <th>Call timestamp</th>
+                <th>Record created</th>
+                <th>Decryption</th>
+                <th>Call details</th>
+              </tr>
+            </thead>
+            <tbody id="recordsBody">
+              <tr><td colspan="6">Sign in to load records.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="footer">
+          <div class="muted" id="pageInfo">No records loaded</div>
+          <div class="row-actions">
+            <button type="button" id="nextBtn" disabled>Load older records</button>
+            <button type="button" id="refreshBtn" class="secondary">Refresh current results</button>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const API_URL = "/api/admin/calls";
+    let adminPassword = "";
+    let nextBeforeId = null;
+    let hasMore = false;
+    let requestInProgress = false;
+    let currentQuery = {};
+
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(element, message, kind = "") {
+      element.textContent = message;
+      element.className = "status " + kind;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[character]);
+    }
+
+    function formatDate(value) {
+      if (!value) return "—";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+    }
+
+    function buildQuery({ cursor = null } = {}) {
+      const params = new URLSearchParams();
+      params.set("limit", String(currentQuery.limit || 50));
+
+      if (currentQuery.deviceId) params.set("deviceId", currentQuery.deviceId);
+      if (currentQuery.from) params.set("from", currentQuery.from);
+      if (currentQuery.to) params.set("to", currentQuery.to);
+      if (cursor) params.set("beforeId", cursor);
+
+      return params.toString();
+    }
+
+    async function requestRecords({ cursor = null, append = false } = {}) {
+      if (!adminPassword || requestInProgress) return;
+
+      requestInProgress = true;
+      $("nextBtn").disabled = true;
+      setStatus($("dataStatus"), "Loading call records...");
+
+      try {
+        const response = await fetch(`${API_URL}?${buildQuery({ cursor })}`, {
+          method: "GET",
+          headers: { "x-admin-password": adminPassword },
+          cache: "no-store"
+        });
+
+        let body;
+        try {
+          body = await response.json();
+        } catch {
+          throw new Error("The server returned an invalid response.");
+        }
+
+        if (response.status === 401) {
+          logout("Master password rejected. Please sign in again.");
+          return;
+        }
+
+        if (!response.ok || body.success !== true) {
+          throw new Error(body.error || `Request failed (${response.status}).`);
+        }
+
+        if (!Array.isArray(body.calls)) {
+          throw new Error("The server response did not contain a valid calls list.");
+        }
+
+        renderRecords(body.calls, append);
+        nextBeforeId = body.nextBeforeId || null;
+        hasMore = body.hasMore === true;
+
+        $("pageCount").textContent = String(
+          $("recordsBody").querySelectorAll("tr[data-record-id]").length
+        );
+        $("moreCount").textContent = hasMore ? "Yes" : "No";
+        $("nextBtn").disabled = !hasMore;
+        $("pageInfo").textContent = body.calls.length
+          ? `${body.calls.length} record(s) returned${hasMore ? ". More records are available." : "."}`
+          : "No matching records.";
+
+        setStatus($("dataStatus"), "Records loaded successfully.", "success");
+      } catch (error) {
+        setStatus($("dataStatus"), error.message || "Unable to load records.", "error");
+      } finally {
+        requestInProgress = false;
+        $("nextBtn").disabled = !hasMore;
+      }
+    }
+
+    function renderRecords(records, append) {
+      if (!append) $("recordsBody").innerHTML = "";
+
+      if (!records.length && !append) {
+        $("recordsBody").innerHTML =
+          '<tr><td colspan="6">No matching call records found.</td></tr>';
+        return;
+      }
+
+      for (const record of records) {
+        const tr = document.createElement("tr");
+        tr.dataset.recordId = String(record.id ?? "");
+
+        const detailsJson = JSON.stringify(record.call, null, 2);
+        const safeDetails = escapeHtml(
+          record.call === null || record.call === undefined
+            ? "No decrypted payload available."
+            : detailsJson
+        );
+
+        const device = [
+          record.deviceName || "Unnamed device",
+          record.deviceModel || "",
+          record.deviceId || ""
+        ].filter(Boolean).join("\n");
+
+        tr.innerHTML = `
+          <td><code>${escapeHtml(record.id)}</code></td>
+          <td><pre>${escapeHtml(device)}</pre></td>
+          <td>${escapeHtml(formatDate(record.callTimestamp))}</td>
+          <td>${escapeHtml(formatDate(record.createdAt))}</td>
+          <td>${record.decryptionFailed
+            ? '<span class="error">Failed</span>'
+            : '<span class="success">Success</span>'}</td>
+          <td>
+            <button type="button" class="secondary detailBtn">Show details</button>
+            <pre class="details hidden">${safeDetails}</pre>
+          </td>
+        `;
+
+        const detailButton = tr.querySelector(".detailBtn");
+        const detailBlock = tr.querySelector(".details");
+
+        detailButton.addEventListener("click", () => {
+          const show = detailBlock.classList.contains("hidden");
+          detailBlock.classList.toggle("hidden", !show);
+          detailButton.textContent = show ? "Hide details" : "Show details";
+        });
+
+        $("recordsBody").appendChild(tr);
+      }
+
+      $("pageCount").textContent = String(
+        $("recordsBody").querySelectorAll("tr[data-record-id]").length
+      );
+    }
+
+    function readFilters() {
+      const rawLimit = Number($("limit").value);
+
+      if (!Number.isInteger(rawLimit) || rawLimit < 1 || rawLimit > 100) {
+        throw new Error("Records per page must be between 1 and 100.");
+      }
+
+      const deviceId = $("deviceId").value.trim();
+      const fromValue = $("fromDate").value;
+      const toValue = $("toDate").value;
+
+      if (deviceId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(deviceId)) {
+        throw new Error("Enter a valid device UUID, or leave the field empty.");
+      }
+
+      const from = fromValue ? new Date(fromValue) : null;
+      const to = toValue ? new Date(toValue) : null;
+
+      if (from && Number.isNaN(from.getTime())) {
+        throw new Error("The From date is invalid.");
+      }
+
+      if (to && Number.isNaN(to.getTime())) {
+        throw new Error("The To date is invalid.");
+      }
+
+      if (from && to && from >= to) {
+        throw new Error("The From date must be earlier than the To date.");
+      }
+
+      return {
+        limit: rawLimit,
+        deviceId,
+        from: from ? from.toISOString() : "",
+        to: to ? to.toISOString() : ""
+      };
+    }
+
+    $("loginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const password = $("password").value;
+
+      if (!password) {
+        setStatus($("loginStatus"), "Enter the master password.", "error");
+        return;
+      }
+
+      adminPassword = password;
+      $("loginBtn").disabled = true;
+      setStatus($("loginStatus"), "Checking master password...");
+
+      try {
+        currentQuery = {
+          limit: 50,
+          deviceId: "",
+          from: "",
+          to: ""
+        };
+
+        await requestRecords();
+
+        const statusText = $("dataStatus").textContent;
+        if (statusText === "Records loaded successfully.") {
+          $("loginPanel").classList.add("hidden");
+          $("dashboard").classList.remove("hidden");
+          $("logoutBtn").classList.remove("hidden");
+          $("filterSummary").textContent = "All devices";
+          $("password").value = "";
+          setStatus($("loginStatus"), "");
+        } else if (adminPassword) {
+          adminPassword = "";
+          setStatus($("loginStatus"), statusText || "Unable to authenticate.", "error");
+        }
+      } finally {
+        $("loginBtn").disabled = false;
+      }
+    });
+
+    $("filterForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      try {
+        currentQuery = readFilters();
+        nextBeforeId = null;
+        hasMore = false;
+        $("recordsBody").innerHTML = "";
+        $("filterSummary").textContent = currentQuery.deviceId
+          ? "One device"
+          : "All devices";
+        await requestRecords();
+      } catch (error) {
+        setStatus($("dataStatus"), error.message, "error");
+      }
+    });
+
+    $("clearFilters").addEventListener("click", async () => {
+      $("deviceId").value = "";
+      $("fromDate").value = "";
+      $("toDate").value = "";
+      $("limit").value = "50";
+
+      currentQuery = { limit: 50, deviceId: "", from: "", to: "" };
+      nextBeforeId = null;
+      hasMore = false;
+      $("filterSummary").textContent = "All devices";
+      await requestRecords();
+    });
+
+    $("nextBtn").addEventListener("click", async () => {
+      if (hasMore && nextBeforeId) {
+        await requestRecords({ cursor: nextBeforeId, append: true });
+      }
+    });
+
+    $("refreshBtn").addEventListener("click", async () => {
+      nextBeforeId = null;
+      hasMore = false;
+      await requestRecords();
+    });
+
+    function logout(message = "You have logged out.") {
+      adminPassword = "";
+      nextBeforeId = null;
+      hasMore = false;
+      requestInProgress = false;
+      $("password").value = "";
+      $("dashboard").classList.add("hidden");
+      $("logoutBtn").classList.add("hidden");
+      $("loginPanel").classList.remove("hidden");
+      $("recordsBody").innerHTML = "";
+      $("pageCount").textContent = "0";
+      $("moreCount").textContent = "No";
+      $("pageInfo").textContent = "No records loaded";
+      setStatus($("loginStatus"), message);
+      setStatus($("dataStatus"), "");
+    }
+
+    $("logoutBtn").addEventListener("click", () => logout());
+  </script>
+</body>
+</html>

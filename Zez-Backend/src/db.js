@@ -1,47 +1,119 @@
-const { Pool } = require('pg');
+
 require("dotenv").config();
 
-const connectionString = process.env.DATABASE_URL;
-// const connectionString="postgresql://neondb_owner:npg_Qxz43HdmWSvE@ep-still-night-b4paxi42-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+const { Pool } = require("pg");
 
+const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error('DATABASE_URL is not configured.');
+  throw new Error("DATABASE_URL is not configured. Check your .env file.");
 }
 
-// Use the connection string supplied by your PostgreSQL provider (for Neon,
-// use its pooled connection string and keep SSL enabled in that URL).
 const pool = new Pool({
   connectionString,
   max: 5,
   idleTimeoutMillis: 30_000,
-  connectionTimeoutMillis: 10_000
+  connectionTimeoutMillis: 10_000,
 });
 
-pool.on('error', (error) => {
-  console.error('Unexpected PostgreSQL pool error:', error);
+pool.on("error", (error) => {
+  console.error("Unexpected PostgreSQL pool error:", error.message);
 });
 
+/**
+ * Verify the existing Neon schema.
+ *
+ * This function deliberately does NOT create or drop tables.
+ * Your Neon database schema is managed separately.
+ */
 async function initializeDatabase() {
-  // Fail early if PostgreSQL is unreachable or credentials are incorrect.
-  await pool.query('SELECT 1');
+  const requiredColumns = {
+    devices: [
+      "id",
+      "device_id",
+      "persistentid",
+      "androidid",
+      "token_hash",
+      "device_details",
+      "registration_status",
+      "last_seen_at",
+      "updated_at",
+    ],
+    call_logs: [
+      "id",
+      "device_id",
+      "external_id_hash",
+      "call_timestamp",
+      "encrypted_payload",
+      "created_at",
+    ],
+  };
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS calls (
-      id BIGSERIAL PRIMARY KEY,
-      external_id_hash CHAR(64) NOT NULL UNIQUE,
-      call_timestamp TEXT NOT NULL DEFAULT '',
-      encrypted_payload TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  // Confirm that the database connection works.
+  await pool.query("SELECT 1");
+
+  // Check that both required tables exist in the public schema.
+  const tablesResult = await pool.query(
+    `SELECT table_name
+       FROM information_schema.tables
+      WHERE table_schema = 'public'
+        AND table_name IN ('devices', 'call_logs')`
+  );
+
+  const existingTables = new Set(
+    tablesResult.rows.map((row) => row.table_name)
+  );
+
+  const missingTables = ["devices", "call_logs"].filter(
+    (table) => !existingTables.has(table)
+  );
+
+  if (missingTables.length > 0) {
+    throw new Error(
+      `Required Neon tables are missing: ${missingTables.join(", ")}. ` +
+      "Check your existing public schema; this backend will not recreate it."
     );
-  `);
+  }
 
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_calls_timestamp
-    ON calls (call_timestamp DESC, id DESC);
-  `);
+  // Check the columns used by the current backend.
+  const columnsResult = await pool.query(
+    `SELECT table_name, column_name
+       FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name IN ('devices', 'call_logs')`
+  );
 
-  console.log('PostgreSQL database initialized.');
+  const columnsByTable = new Map();
+
+  for (const row of columnsResult.rows) {
+    if (!columnsByTable.has(row.table_name)) {
+      columnsByTable.set(row.table_name, new Set());
+    }
+    columnsByTable.get(row.table_name).add(row.column_name);
+  }
+
+  const missingColumns = [];
+
+  for (const [table, columns] of Object.entries(requiredColumns)) {
+    const existingColumns = columnsByTable.get(table) || new Set();
+
+    for (const column of columns) {
+      if (!existingColumns.has(column)) {
+        missingColumns.push(`public.${table}.${column}`);
+      }
+    }
+  }
+
+  if (missingColumns.length > 0) {
+    throw new Error(
+      "The Neon schema is missing columns required by the backend: " +
+      missingColumns.join(", ")
+    );
+  }
+
+  console.log(
+    "Neon database connected. Existing public.devices and public.call_logs tables verified."
+  );
 }
 
 async function closeDatabase() {
@@ -51,5 +123,5 @@ async function closeDatabase() {
 module.exports = {
   pool,
   initializeDatabase,
-  closeDatabase
+  closeDatabase,
 };

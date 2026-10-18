@@ -1,5 +1,6 @@
 node_modules/
 data/
+demo/
 .env
 *.db
 *.sqlite
