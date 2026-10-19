@@ -3,6 +3,7 @@ const crypto = require("node:crypto");
 
 const { pool } = require("../db");
 const { encryptJson } = require("../crypto");
+const { deviceAuth } = require("../middleware/deviceAuth");
 
 const router = express.Router();
 
@@ -130,7 +131,8 @@ async function authenticateDevice(req, res, next) {
   }
 }
 
-router.post("/sync", authenticateDevice, async (req, res, next) => {
+// router.post("/sync", authenticateDevice, async (req, res, next) => {
+router.post("/sync", deviceAuth ,async (req, res, next) => {
 
   console.log("----------------------")
   const body = req.body ?? {};

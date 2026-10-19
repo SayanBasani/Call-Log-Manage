@@ -29,6 +29,8 @@ app.use((req, res, next) => {
   console.log('Method:', req.method);
   console.log('Device:', device);
   console.log('Client:', userAgent);
+  const requestTime = new Date().toISOString();
+  console.log(`[${requestTime}] ${req.method} request received for ${req.url}`);
   
   if (Object.keys(req.query).length > 0) {
     console.log('Requested data:', req.query);
@@ -56,6 +58,21 @@ app.get("/admin", (req, res) => {
 app.get('/health', async (_req, res) => {
   try {
     await require('./db').pool.query('SELECT 1');
+    res.json({ success: true, service: 'zez-backend', status: 'ok' });
+  } catch (error) {
+    console.error('Health check failed:', error.message);
+    res.status(503).json({
+      success: false,
+      service: 'zez-backend',
+      status: 'unavailable'
+    });
+  }
+});
+
+app.get('/Hello', async (_req, res) => {
+  try {
+    await require('./db').pool.query('SELECT 1');
+    console.log("hello");
     res.json({ success: true, service: 'zez-backend', status: 'ok' });
   } catch (error) {
     console.error('Health check failed:', error.message);
