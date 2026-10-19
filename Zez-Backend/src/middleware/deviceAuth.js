@@ -5,7 +5,13 @@ async function deviceAuth(req, res, next) {
   try {
     const authorization = req.get("authorization") || "";
     const match = authorization.match(/^Bearer\s+(\S+)$/i);
-
+    console.log("[ZEZ Auth] Header diagnostic:", {
+      method: req.method,
+      path: req.originalUrl,
+      headerPresent: Boolean(authorization),
+      bearerFormatValid: Boolean(match),
+      contentType: req.get("content-type") || null,
+    });
     if (!match) {
       console.warn("[ZEZ Auth] Missing or malformed Bearer token.");
       return res.status(401).json({
